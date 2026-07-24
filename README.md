@@ -1,6 +1,6 @@
-# Jade Tunnel
+# JadeTunnel
 
-Interactive management script for [Backhaul](https://github.com/Musixal/Backhaul) reverse tunnels — create, monitor, and manage TCP/TCPMUX/WSMUX/WSSMUX tunnels between an Iran server and a foreign (kharej) server, with systemd services, TLS certs, backups, and live logs, all from one menu.
+Interactive management script for [Backhaul](https://github.com/Musixal/Backhaul) reverse tunnels — create, monitor, and manage TCP/TCPMUX/WSMUX/WSSMUX tunnels between an Iran server and a foreign server, with systemd services, TLS certs, backups, and live logs, all from one menu.
 
 ## Install
 
@@ -8,7 +8,7 @@ Interactive management script for [Backhaul](https://github.com/Musixal/Backhaul
 bash <(curl -fsSL https://raw.githubusercontent.com/Mahersaber2024/Jade-Tunnel-tannel/main/install.sh)
 ```
 
-Run it on **both** servers (Iran and kharej). Requires root.
+Run it on **both** servers (Iran and foreign). Requires root.
 
 ## Usage
 
