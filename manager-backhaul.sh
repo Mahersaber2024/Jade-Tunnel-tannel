@@ -26,6 +26,10 @@ NC='\033[0m'
 OK="${LGREEN}✔${NC}"; FAIL="${LRED}✘${NC}"; WARN="${YELLOW}⚠${NC}"
 INFO="${LBLUE}ℹ${NC}"; ARROW="${CYAN}›${NC}"; BULLET="${MAGENTA}•${NC}"
 
+# ─── App Identity ────────────────────────────────────────────────────────────
+APP_NAME="JadeTunnel Manager"
+APP_VERSION="1.0.3"
+
 # ─── Paths & Defaults ────────────────────────────────────────────────────────
 INSTALL_DIR="/etc/backhaul"
 BINARY="/usr/local/bin/backhaul"
@@ -58,14 +62,14 @@ detect_role() {
     # Check running services to guess role
     if systemctl list-units --type=service --state=running 2>/dev/null | grep -q "backhaul-iran"; then
         echo "iran"
-    elif systemctl list-units --type=service --state=running 2>/dev/null | grep -q "backhaul-kharej"; then
-        echo "kharej"
+    elif systemctl list-units --type=service --state=running 2>/dev/null | grep -q "backhaul-foreign"; then
+        echo "foreign"
     else
         # Fallback: look at config files
         if ls "$INSTALL_DIR"/iran-*.toml 2>/dev/null | head -1 | grep -q .; then
             echo "iran"
-        elif ls "$INSTALL_DIR"/kharej-*.toml 2>/dev/null | head -1 | grep -q .; then
-            echo "kharej"
+        elif ls "$INSTALL_DIR"/foreign-*.toml 2>/dev/null | head -1 | grep -q .; then
+            echo "foreign"
         else
             echo "unknown"
         fi
@@ -112,7 +116,7 @@ get_service_config_path() {
     local unit="${svc%.service}"
     local cfg=""
 
-    if [[ "$unit" =~ ^backhaul-(iran|kharej)-([a-z0-9]+)-([0-9]+)$ ]]; then
+    if [[ "$unit" =~ ^backhaul-(iran|foreign)-([a-z0-9]+)-([0-9]+)$ ]]; then
         cfg="$INSTALL_DIR/${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}.toml"
         [[ -f "$cfg" ]] && { printf '%s\n' "$cfg"; return 0; }
     fi
@@ -156,12 +160,12 @@ generate_ssl_cert() {
 _print_logo() {
     echo -e "${BOLD}${LCYAN}"
     cat << 'LOGO'
-  ██████╗  █████╗  ██████╗██╗  ██╗██╗  ██╗ █████╗ ██╗   ██╗██╗
-  ██╔══██╗██╔══██╗██╔════╝██║ ██╔╝██║  ██║██╔══██╗██║   ██║██║
-  ██████╔╝███████║██║     █████╔╝ ███████║███████║██║   ██║██║
-  ██╔══██╗██╔══██║██║     ██╔═██╗ ██╔══██║██╔══██║██║   ██║██║
-  ██████╔╝██║  ██║╚██████╗██║  ██╗██║  ██║██║  ██║╚██████╔╝███████╗
-  ╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝
+       ██╗ █████╗ ██████╗ ███████╗████████╗██╗   ██╗███╗   ██╗███╗   ██╗███████╗██╗
+       ██║██╔══██╗██╔══██╗██╔════╝╚══██╔══╝██║   ██║████╗  ██║████╗  ██║██╔════╝██║
+       ██║███████║██║  ██║█████╗     ██║   ██║   ██║██╔██╗ ██║██╔██╗ ██║█████╗  ██║
+  ██   ██║██╔══██║██║  ██║██╔══╝     ██║   ██║   ██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║
+  ╚█████╔╝██║  ██║██████╔╝███████╗   ██║   ╚██████╔╝██║ ╚████║██║ ╚████║███████╗███████╗
+   ╚════╝ ╚═╝  ╚═╝╚═════╝ ╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
 LOGO
     echo -e "${NC}"
 }
@@ -169,7 +173,7 @@ LOGO
 ask_server_role() {
     clear
     _print_logo
-    echo -e "  ${DIM}Backhaul Free Tunnel Manager v1.1.0 by ${NC}${CYAN}@B3hnamR${NC}"
+    echo -e "  ${DIM}${APP_NAME} v${APP_VERSION}${NC}"
     echo -e "  ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     # Try auto-detect first
@@ -178,7 +182,7 @@ ask_server_role() {
     echo -e "\n  ${BOLD}${WHITE}Which server is this?${NC}"
     echo -e "  ${DIM}This setting applies to all tunnel operations in this session.${NC}\n"
     echo -e "  ${WHITE}[1]${NC} ${LGREEN}IRAN${NC}   — Server inside Iran   ${DIM}(acts as listener / server side)${NC}"
-    echo -e "  ${WHITE}[2]${NC} ${LBLUE}KHAREJ${NC} — Server outside Iran  ${DIM}(acts as connector / client side)${NC}"
+    echo -e "  ${WHITE}[2]${NC} ${LBLUE}FOREIGN${NC} — Server outside Iran  ${DIM}(acts as connector / client side)${NC}"
 
     if [[ "$auto_role" != "unknown" ]]; then
         echo -e "\n  ${DIM}  Auto-detected from existing services: ${LYELLOW}${auto_role}${NC}"
@@ -193,13 +197,13 @@ ask_server_role() {
     else
         case "$_rc" in
             1) SERVER_ROLE="iran" ;;
-            2) SERVER_ROLE="kharej" ;;
+            2) SERVER_ROLE="foreign" ;;
             *) warn "Invalid choice — defaulting to auto-detect or Iran."
                SERVER_ROLE="$auto_role" ;;
         esac
     fi
 
-    if [[ "$SERVER_ROLE" != "iran" ]] && [[ "$SERVER_ROLE" != "kharej" ]]; then
+    if [[ "$SERVER_ROLE" != "iran" ]] && [[ "$SERVER_ROLE" != "foreign" ]]; then
         SERVER_ROLE="iran"
     fi
 
@@ -214,12 +218,12 @@ print_header() {
     local role_label role_color
     case "$SERVER_ROLE" in
         iran)   role_label="IRAN  (Server)"; role_color="$LGREEN" ;;
-        kharej) role_label="KHAREJ (Client)"; role_color="$LBLUE" ;;
+        foreign) role_label="FOREIGN (Client)"; role_color="$LBLUE" ;;
         *)      role_label="NOT SET";         role_color="$YELLOW" ;;
     esac
 
     _print_logo
-    echo -e "  ${DIM}Backhaul Free Tunnel Manager v1.1.0 by ${NC}${CYAN}@B3hnamR${NC}"
+    echo -e "  ${DIM}${APP_NAME} v${APP_VERSION}${NC}"
     echo -e "  ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "  ${GRAY}IP   : ${WHITE}$ip${NC}   ${GRAY}Role : ${role_color}${BOLD}$role_label${NC}"
     [[ -x "$BINARY" ]] && {
@@ -401,24 +405,24 @@ PRESET_IRAN_MSS=1360
 PRESET_IRAN_SO_RCVBUF=4194304
 PRESET_IRAN_SO_SNDBUF=4194304
 
-# Kharej / Client side
-PRESET_KHAREJ_CONN_POOL=8
-PRESET_KHAREJ_AGGRESSIVE_POOL=false
-PRESET_KHAREJ_KEEPALIVE=75
-PRESET_KHAREJ_DIAL_TIMEOUT=10
-PRESET_KHAREJ_RETRY_INTERVAL=3
-PRESET_KHAREJ_NODELAY=true
-PRESET_KHAREJ_MUX_VERSION=1
-PRESET_KHAREJ_MUX_FRAMESIZE=32768
-PRESET_KHAREJ_MUX_RECVBUF=4194304
-PRESET_KHAREJ_MUX_STREAMBUF=65536
-PRESET_KHAREJ_SNIFFER=false
-PRESET_KHAREJ_WEB_PORT=0
-PRESET_KHAREJ_LOG_LEVEL_TCP="info"
-PRESET_KHAREJ_LOG_LEVEL_MUX="info"
-PRESET_KHAREJ_MSS=1360
-PRESET_KHAREJ_SO_RCVBUF=4194304
-PRESET_KHAREJ_SO_SNDBUF=4194304
+# Foreign / Client side
+PRESET_FOREIGN_CONN_POOL=8
+PRESET_FOREIGN_AGGRESSIVE_POOL=false
+PRESET_FOREIGN_KEEPALIVE=75
+PRESET_FOREIGN_DIAL_TIMEOUT=10
+PRESET_FOREIGN_RETRY_INTERVAL=3
+PRESET_FOREIGN_NODELAY=true
+PRESET_FOREIGN_MUX_VERSION=1
+PRESET_FOREIGN_MUX_FRAMESIZE=32768
+PRESET_FOREIGN_MUX_RECVBUF=4194304
+PRESET_FOREIGN_MUX_STREAMBUF=65536
+PRESET_FOREIGN_SNIFFER=false
+PRESET_FOREIGN_WEB_PORT=0
+PRESET_FOREIGN_LOG_LEVEL_TCP="info"
+PRESET_FOREIGN_LOG_LEVEL_MUX="info"
+PRESET_FOREIGN_MSS=1360
+PRESET_FOREIGN_SO_RCVBUF=4194304
+PRESET_FOREIGN_SO_SNDBUF=4194304
 
 # ─── SHOW PRESET SUMMARY ─────────────────────────────────────────────────────
 _show_preset_summary() {
@@ -447,27 +451,27 @@ _show_preset_summary() {
         echo -e "  ${BULLET} sniffer           = ${LYELLOW}${PRESET_IRAN_SNIFFER}${NC}"
         echo -e "  ${BULLET} web_port          = ${LYELLOW}${PRESET_IRAN_WEB_PORT}${NC} (disabled)"
     else
-        local _ll_kharej; _ll_kharej=$([[ "$transport" == "tcp" ]] && echo "$PRESET_KHAREJ_LOG_LEVEL_TCP" || echo "$PRESET_KHAREJ_LOG_LEVEL_MUX")
-        echo -e "  ${BULLET} connection_pool   = ${LYELLOW}${PRESET_KHAREJ_CONN_POOL}${NC}"
-        echo -e "  ${BULLET} aggressive_pool   = ${LYELLOW}${PRESET_KHAREJ_AGGRESSIVE_POOL}${NC}"
-        echo -e "  ${BULLET} keepalive_period  = ${LYELLOW}${PRESET_KHAREJ_KEEPALIVE}${NC}s"
-        echo -e "  ${BULLET} dial_timeout      = ${LYELLOW}${PRESET_KHAREJ_DIAL_TIMEOUT}${NC}s"
-        echo -e "  ${BULLET} retry_interval    = ${LYELLOW}${PRESET_KHAREJ_RETRY_INTERVAL}${NC}s"
-        echo -e "  ${BULLET} nodelay           = ${LYELLOW}${PRESET_KHAREJ_NODELAY}${NC}"
+        local _ll_foreign; _ll_foreign=$([[ "$transport" == "tcp" ]] && echo "$PRESET_FOREIGN_LOG_LEVEL_TCP" || echo "$PRESET_FOREIGN_LOG_LEVEL_MUX")
+        echo -e "  ${BULLET} connection_pool   = ${LYELLOW}${PRESET_FOREIGN_CONN_POOL}${NC}"
+        echo -e "  ${BULLET} aggressive_pool   = ${LYELLOW}${PRESET_FOREIGN_AGGRESSIVE_POOL}${NC}"
+        echo -e "  ${BULLET} keepalive_period  = ${LYELLOW}${PRESET_FOREIGN_KEEPALIVE}${NC}s"
+        echo -e "  ${BULLET} dial_timeout      = ${LYELLOW}${PRESET_FOREIGN_DIAL_TIMEOUT}${NC}s"
+        echo -e "  ${BULLET} retry_interval    = ${LYELLOW}${PRESET_FOREIGN_RETRY_INTERVAL}${NC}s"
+        echo -e "  ${BULLET} nodelay           = ${LYELLOW}${PRESET_FOREIGN_NODELAY}${NC}"
         if [[ "$transport" != "tcp" ]]; then
-            echo -e "  ${BULLET} mux_version       = ${LYELLOW}${PRESET_KHAREJ_MUX_VERSION}${NC}"
-            echo -e "  ${BULLET} mux_framesize     = ${LYELLOW}${PRESET_KHAREJ_MUX_FRAMESIZE}${NC} (32KB)"
-            echo -e "  ${BULLET} mux_recievebuffer = ${LYELLOW}${PRESET_KHAREJ_MUX_RECVBUF}${NC} (4MB)"
-            echo -e "  ${BULLET} mux_streambuffer  = ${LYELLOW}${PRESET_KHAREJ_MUX_STREAMBUF}${NC} (64KB)"
+            echo -e "  ${BULLET} mux_version       = ${LYELLOW}${PRESET_FOREIGN_MUX_VERSION}${NC}"
+            echo -e "  ${BULLET} mux_framesize     = ${LYELLOW}${PRESET_FOREIGN_MUX_FRAMESIZE}${NC} (32KB)"
+            echo -e "  ${BULLET} mux_recievebuffer = ${LYELLOW}${PRESET_FOREIGN_MUX_RECVBUF}${NC} (4MB)"
+            echo -e "  ${BULLET} mux_streambuffer  = ${LYELLOW}${PRESET_FOREIGN_MUX_STREAMBUF}${NC} (64KB)"
         fi
-        echo -e "  ${BULLET} log_level         = ${LYELLOW}${_ll_kharej}${NC}"
+        echo -e "  ${BULLET} log_level         = ${LYELLOW}${_ll_foreign}${NC}"
         if [[ "$transport" == "tcp" ]] || [[ "$transport" == "tcpmux" ]]; then
-            echo -e "  ${BULLET} mss               = ${LYELLOW}${PRESET_KHAREJ_MSS}${NC}"
-            echo -e "  ${BULLET} so_rcvbuf         = ${LYELLOW}${PRESET_KHAREJ_SO_RCVBUF}${NC} (4MB)"
-            echo -e "  ${BULLET} so_sndbuf         = ${LYELLOW}${PRESET_KHAREJ_SO_SNDBUF}${NC} (4MB)"
+            echo -e "  ${BULLET} mss               = ${LYELLOW}${PRESET_FOREIGN_MSS}${NC}"
+            echo -e "  ${BULLET} so_rcvbuf         = ${LYELLOW}${PRESET_FOREIGN_SO_RCVBUF}${NC} (4MB)"
+            echo -e "  ${BULLET} so_sndbuf         = ${LYELLOW}${PRESET_FOREIGN_SO_SNDBUF}${NC} (4MB)"
         fi
-        echo -e "  ${BULLET} sniffer           = ${LYELLOW}${PRESET_KHAREJ_SNIFFER}${NC}"
-        echo -e "  ${BULLET} web_port          = ${LYELLOW}${PRESET_KHAREJ_WEB_PORT}${NC} (disabled)"
+        echo -e "  ${BULLET} sniffer           = ${LYELLOW}${PRESET_FOREIGN_SNIFFER}${NC}"
+        echo -e "  ${BULLET} web_port          = ${LYELLOW}${PRESET_FOREIGN_WEB_PORT}${NC} (disabled)"
     fi
     separator
 }
@@ -532,65 +536,65 @@ _ask_advanced_iran() {
     ADV_WEB_PORT="${v:-$PRESET_IRAN_WEB_PORT}"
 }
 
-_ask_advanced_kharej() {
+_ask_advanced_foreign() {
     local transport="$1"
 
-    prompt "connection_pool [${PRESET_KHAREJ_CONN_POOL}]:"; read -r v
-    ADV_CONN_POOL="${v:-$PRESET_KHAREJ_CONN_POOL}"
+    prompt "connection_pool [${PRESET_FOREIGN_CONN_POOL}]:"; read -r v
+    ADV_CONN_POOL="${v:-$PRESET_FOREIGN_CONN_POOL}"
 
-    prompt "aggressive_pool (true/false) [${PRESET_KHAREJ_AGGRESSIVE_POOL}]:"; read -r v
-    ADV_AGGRESSIVE_POOL="${v:-$PRESET_KHAREJ_AGGRESSIVE_POOL}"
+    prompt "aggressive_pool (true/false) [${PRESET_FOREIGN_AGGRESSIVE_POOL}]:"; read -r v
+    ADV_AGGRESSIVE_POOL="${v:-$PRESET_FOREIGN_AGGRESSIVE_POOL}"
 
-    prompt "keepalive_period [${PRESET_KHAREJ_KEEPALIVE}]:"; read -r v
-    ADV_KEEPALIVE="${v:-$PRESET_KHAREJ_KEEPALIVE}"
+    prompt "keepalive_period [${PRESET_FOREIGN_KEEPALIVE}]:"; read -r v
+    ADV_KEEPALIVE="${v:-$PRESET_FOREIGN_KEEPALIVE}"
 
-    prompt "dial_timeout [${PRESET_KHAREJ_DIAL_TIMEOUT}]:"; read -r v
-    ADV_DIAL_TIMEOUT="${v:-$PRESET_KHAREJ_DIAL_TIMEOUT}"
+    prompt "dial_timeout [${PRESET_FOREIGN_DIAL_TIMEOUT}]:"; read -r v
+    ADV_DIAL_TIMEOUT="${v:-$PRESET_FOREIGN_DIAL_TIMEOUT}"
 
-    prompt "retry_interval [${PRESET_KHAREJ_RETRY_INTERVAL}]:"; read -r v
-    ADV_RETRY_INTERVAL="${v:-$PRESET_KHAREJ_RETRY_INTERVAL}"
+    prompt "retry_interval [${PRESET_FOREIGN_RETRY_INTERVAL}]:"; read -r v
+    ADV_RETRY_INTERVAL="${v:-$PRESET_FOREIGN_RETRY_INTERVAL}"
 
-    prompt "nodelay (true/false) [${PRESET_KHAREJ_NODELAY}]:"; read -r v
-    ADV_NODELAY="${v:-$PRESET_KHAREJ_NODELAY}"
+    prompt "nodelay (true/false) [${PRESET_FOREIGN_NODELAY}]:"; read -r v
+    ADV_NODELAY="${v:-$PRESET_FOREIGN_NODELAY}"
 
     if [[ "$transport" != "tcp" ]]; then
-        prompt "mux_version [${PRESET_KHAREJ_MUX_VERSION}]:"; read -r v
-        ADV_MUX_VERSION="${v:-$PRESET_KHAREJ_MUX_VERSION}"
+        prompt "mux_version [${PRESET_FOREIGN_MUX_VERSION}]:"; read -r v
+        ADV_MUX_VERSION="${v:-$PRESET_FOREIGN_MUX_VERSION}"
 
-        prompt "mux_framesize [${PRESET_KHAREJ_MUX_FRAMESIZE}]:"; read -r v
-        ADV_MUX_FRAMESIZE="${v:-$PRESET_KHAREJ_MUX_FRAMESIZE}"
+        prompt "mux_framesize [${PRESET_FOREIGN_MUX_FRAMESIZE}]:"; read -r v
+        ADV_MUX_FRAMESIZE="${v:-$PRESET_FOREIGN_MUX_FRAMESIZE}"
 
-        prompt "mux_recievebuffer [${PRESET_KHAREJ_MUX_RECVBUF}]:"; read -r v
-        ADV_MUX_RECVBUF="${v:-$PRESET_KHAREJ_MUX_RECVBUF}"
+        prompt "mux_recievebuffer [${PRESET_FOREIGN_MUX_RECVBUF}]:"; read -r v
+        ADV_MUX_RECVBUF="${v:-$PRESET_FOREIGN_MUX_RECVBUF}"
 
-        prompt "mux_streambuffer [${PRESET_KHAREJ_MUX_STREAMBUF}]:"; read -r v
-        ADV_MUX_STREAMBUF="${v:-$PRESET_KHAREJ_MUX_STREAMBUF}"
+        prompt "mux_streambuffer [${PRESET_FOREIGN_MUX_STREAMBUF}]:"; read -r v
+        ADV_MUX_STREAMBUF="${v:-$PRESET_FOREIGN_MUX_STREAMBUF}"
     else
-        ADV_MUX_VERSION="$PRESET_KHAREJ_MUX_VERSION"
-        ADV_MUX_FRAMESIZE="$PRESET_KHAREJ_MUX_FRAMESIZE"
-        ADV_MUX_RECVBUF="$PRESET_KHAREJ_MUX_RECVBUF"
-        ADV_MUX_STREAMBUF="$PRESET_KHAREJ_MUX_STREAMBUF"
+        ADV_MUX_VERSION="$PRESET_FOREIGN_MUX_VERSION"
+        ADV_MUX_FRAMESIZE="$PRESET_FOREIGN_MUX_FRAMESIZE"
+        ADV_MUX_RECVBUF="$PRESET_FOREIGN_MUX_RECVBUF"
+        ADV_MUX_STREAMBUF="$PRESET_FOREIGN_MUX_STREAMBUF"
     fi
 
-    local _def_ll_kharej; _def_ll_kharej=$([[ "$transport" == "tcp" ]] && echo "$PRESET_KHAREJ_LOG_LEVEL_TCP" || echo "$PRESET_KHAREJ_LOG_LEVEL_MUX")
+    local _def_ll_foreign; _def_ll_foreign=$([[ "$transport" == "tcp" ]] && echo "$PRESET_FOREIGN_LOG_LEVEL_TCP" || echo "$PRESET_FOREIGN_LOG_LEVEL_MUX")
     echo -e "  ${DIM}log_level options: panic | fatal | error | warn | info | debug | trace${NC}"
-    prompt "log_level [${_def_ll_kharej}]:"; read -r v
-    ADV_LOG_LEVEL="${v:-$_def_ll_kharej}"
+    prompt "log_level [${_def_ll_foreign}]:"; read -r v
+    ADV_LOG_LEVEL="${v:-$_def_ll_foreign}"
 
-    prompt "mss [${PRESET_KHAREJ_MSS}]:"; read -r v
-    ADV_MSS="${v:-$PRESET_KHAREJ_MSS}"
+    prompt "mss [${PRESET_FOREIGN_MSS}]:"; read -r v
+    ADV_MSS="${v:-$PRESET_FOREIGN_MSS}"
 
-    prompt "so_rcvbuf [${PRESET_KHAREJ_SO_RCVBUF}]:"; read -r v
-    ADV_SO_RCVBUF="${v:-$PRESET_KHAREJ_SO_RCVBUF}"
+    prompt "so_rcvbuf [${PRESET_FOREIGN_SO_RCVBUF}]:"; read -r v
+    ADV_SO_RCVBUF="${v:-$PRESET_FOREIGN_SO_RCVBUF}"
 
-    prompt "so_sndbuf [${PRESET_KHAREJ_SO_SNDBUF}]:"; read -r v
-    ADV_SO_SNDBUF="${v:-$PRESET_KHAREJ_SO_SNDBUF}"
+    prompt "so_sndbuf [${PRESET_FOREIGN_SO_SNDBUF}]:"; read -r v
+    ADV_SO_SNDBUF="${v:-$PRESET_FOREIGN_SO_SNDBUF}"
 
-    prompt "sniffer (true/false) [${PRESET_KHAREJ_SNIFFER}]:"; read -r v
-    ADV_SNIFFER="${v:-$PRESET_KHAREJ_SNIFFER}"
+    prompt "sniffer (true/false) [${PRESET_FOREIGN_SNIFFER}]:"; read -r v
+    ADV_SNIFFER="${v:-$PRESET_FOREIGN_SNIFFER}"
 
-    prompt "web_port (0=disable) [${PRESET_KHAREJ_WEB_PORT}]:"; read -r v
-    ADV_WEB_PORT="${v:-$PRESET_KHAREJ_WEB_PORT}"
+    prompt "web_port (0=disable) [${PRESET_FOREIGN_WEB_PORT}]:"; read -r v
+    ADV_WEB_PORT="${v:-$PRESET_FOREIGN_WEB_PORT}"
 }
 
 # ─── WRITE CONFIG FILES ───────────────────────────────────────────────────────
@@ -599,7 +603,7 @@ _ask_advanced_kharej() {
 #   mux_*       : TCPMUX, WSMUX, WSSMUX only
 #   tls_cert/key: WSSMUX only
 #   mss, so_*   : TCP and TCPMUX only (NOT wsmux/wssmux)
-#   edge_ip     : WSMUX and WSSMUX only (client/Kharej)
+#   edge_ip     : WSMUX and WSSMUX only (client/Foreign)
 
 _write_iran_config() {
     local config_file="$1" transport="$2" tunnel_port="$3" token="$4"
@@ -656,7 +660,7 @@ _write_iran_config() {
     } > "$config_file"
 }
 
-_write_kharej_config() {
+_write_foreign_config() {
     local config_file="$1" transport="$2" tunnel_port="$3" iran_ip="$4" token="$5"
     local iran_ip_e token_e
     iran_ip_e=$(toml_escape "$iran_ip")
@@ -706,8 +710,8 @@ menu_create_tunnel() {
     local role_label role_color
     case "$ROLE" in
         iran)   role_label="IRAN (Server)";   role_color="$LGREEN" ;;
-        kharej) role_label="KHAREJ (Client)"; role_color="$LBLUE" ;;
-        *)      warn "Invalid server role. Please restart the script and select Iran or Kharej."; return ;;
+        foreign) role_label="FOREIGN (Client)"; role_color="$LBLUE" ;;
+        *)      warn "Invalid server role. Please restart the script and select Iran or Foreign."; return ;;
     esac
     echo -e "  ${DIM}Server role: ${role_color}${BOLD}${role_label}${NC}"
     separator
@@ -846,30 +850,30 @@ menu_create_tunnel() {
         ADV_SO_SNDBUF="$PRESET_IRAN_SO_SNDBUF"
         ADV_SNIFFER="$PRESET_IRAN_SNIFFER"
         ADV_WEB_PORT="$PRESET_IRAN_WEB_PORT"
-        # kharej-only defaults (unused for iran, but must be set for set -u)
-        ADV_CONN_POOL="$PRESET_KHAREJ_CONN_POOL"
-        ADV_AGGRESSIVE_POOL="$PRESET_KHAREJ_AGGRESSIVE_POOL"
-        ADV_DIAL_TIMEOUT="$PRESET_KHAREJ_DIAL_TIMEOUT"
-        ADV_RETRY_INTERVAL="$PRESET_KHAREJ_RETRY_INTERVAL"
+        # foreign-only defaults (unused for iran, but must be set for set -u)
+        ADV_CONN_POOL="$PRESET_FOREIGN_CONN_POOL"
+        ADV_AGGRESSIVE_POOL="$PRESET_FOREIGN_AGGRESSIVE_POOL"
+        ADV_DIAL_TIMEOUT="$PRESET_FOREIGN_DIAL_TIMEOUT"
+        ADV_RETRY_INTERVAL="$PRESET_FOREIGN_RETRY_INTERVAL"
     else
-        _log_level_default=$([[ "$TRANSPORT" == "tcp" ]] && echo "$PRESET_KHAREJ_LOG_LEVEL_TCP" || echo "$PRESET_KHAREJ_LOG_LEVEL_MUX")
-        ADV_CONN_POOL="$PRESET_KHAREJ_CONN_POOL"
-        ADV_AGGRESSIVE_POOL="$PRESET_KHAREJ_AGGRESSIVE_POOL"
-        ADV_KEEPALIVE="$PRESET_KHAREJ_KEEPALIVE"
-        ADV_DIAL_TIMEOUT="$PRESET_KHAREJ_DIAL_TIMEOUT"
-        ADV_RETRY_INTERVAL="$PRESET_KHAREJ_RETRY_INTERVAL"
-        ADV_NODELAY="$PRESET_KHAREJ_NODELAY"
-        ADV_MUX_VERSION="$PRESET_KHAREJ_MUX_VERSION"
-        ADV_MUX_FRAMESIZE="$PRESET_KHAREJ_MUX_FRAMESIZE"
-        ADV_MUX_RECVBUF="$PRESET_KHAREJ_MUX_RECVBUF"
-        ADV_MUX_STREAMBUF="$PRESET_KHAREJ_MUX_STREAMBUF"
+        _log_level_default=$([[ "$TRANSPORT" == "tcp" ]] && echo "$PRESET_FOREIGN_LOG_LEVEL_TCP" || echo "$PRESET_FOREIGN_LOG_LEVEL_MUX")
+        ADV_CONN_POOL="$PRESET_FOREIGN_CONN_POOL"
+        ADV_AGGRESSIVE_POOL="$PRESET_FOREIGN_AGGRESSIVE_POOL"
+        ADV_KEEPALIVE="$PRESET_FOREIGN_KEEPALIVE"
+        ADV_DIAL_TIMEOUT="$PRESET_FOREIGN_DIAL_TIMEOUT"
+        ADV_RETRY_INTERVAL="$PRESET_FOREIGN_RETRY_INTERVAL"
+        ADV_NODELAY="$PRESET_FOREIGN_NODELAY"
+        ADV_MUX_VERSION="$PRESET_FOREIGN_MUX_VERSION"
+        ADV_MUX_FRAMESIZE="$PRESET_FOREIGN_MUX_FRAMESIZE"
+        ADV_MUX_RECVBUF="$PRESET_FOREIGN_MUX_RECVBUF"
+        ADV_MUX_STREAMBUF="$PRESET_FOREIGN_MUX_STREAMBUF"
         ADV_LOG_LEVEL="$_log_level_default"
-        ADV_MSS="$PRESET_KHAREJ_MSS"
-        ADV_SO_RCVBUF="$PRESET_KHAREJ_SO_RCVBUF"
-        ADV_SO_SNDBUF="$PRESET_KHAREJ_SO_SNDBUF"
-        ADV_SNIFFER="$PRESET_KHAREJ_SNIFFER"
-        ADV_WEB_PORT="$PRESET_KHAREJ_WEB_PORT"
-        # iran-only defaults (unused for kharej, but must be set for set -u)
+        ADV_MSS="$PRESET_FOREIGN_MSS"
+        ADV_SO_RCVBUF="$PRESET_FOREIGN_SO_RCVBUF"
+        ADV_SO_SNDBUF="$PRESET_FOREIGN_SO_SNDBUF"
+        ADV_SNIFFER="$PRESET_FOREIGN_SNIFFER"
+        ADV_WEB_PORT="$PRESET_FOREIGN_WEB_PORT"
+        # iran-only defaults (unused for foreign, but must be set for set -u)
         ADV_HEARTBEAT="$PRESET_IRAN_HEARTBEAT"
         ADV_CHANNEL_SIZE="$PRESET_IRAN_CHANNEL_SIZE"
         ADV_MUX_CON="$PRESET_IRAN_MUX_CON"
@@ -887,7 +891,7 @@ menu_create_tunnel() {
             if [[ "$ROLE" == "iran" ]]; then
                 _ask_advanced_iran "$TRANSPORT"
             else
-                _ask_advanced_kharej "$TRANSPORT"
+                _ask_advanced_foreign "$TRANSPORT"
             fi
             ;;
         *)
@@ -922,7 +926,7 @@ menu_create_tunnel() {
     if [[ "$ROLE" == "iran" ]]; then
         _write_iran_config "$CONFIG_FILE" "$TRANSPORT" "$TUNNEL_PORT" "$TOKEN" "${PORTS[@]+"${PORTS[@]}"}"
     else
-        _write_kharej_config "$CONFIG_FILE" "$TRANSPORT" "$TUNNEL_PORT" "$IRAN_IP" "$TOKEN"
+        _write_foreign_config "$CONFIG_FILE" "$TRANSPORT" "$TUNNEL_PORT" "$IRAN_IP" "$TOKEN"
     fi
 
     local DESCRIPTION
@@ -988,7 +992,7 @@ SERVICE
     if [[ "$ROLE" == "iran" ]]; then
         echo -e "  ${BOLD}${LGREEN}[ THIS SERVER — IRAN (Listener) ]${NC}"
     else
-        echo -e "  ${BOLD}${LBLUE}[ THIS SERVER — KHAREJ (Connector) ]${NC}"
+        echo -e "  ${BOLD}${LBLUE}[ THIS SERVER — FOREIGN (Connector) ]${NC}"
     fi
     echo -e "  ${BULLET} IP          : ${WHITE}${local_ip}${NC}"
     echo -e "  ${BULLET} Service     : ${CYAN}${SVC_NAME}${NC}"
@@ -1009,14 +1013,14 @@ SERVICE
     # What to run on the OTHER server
     echo ""
     if [[ "$ROLE" == "iran" ]]; then
-        echo -e "  ${BOLD}${LBLUE}[ OTHER SERVER — KHAREJ (run this script there) ]${NC}"
-        echo -e "  ${BULLET} Role        : ${LBLUE}KHAREJ${NC}"
+        echo -e "  ${BOLD}${LBLUE}[ OTHER SERVER — FOREIGN (run this script there) ]${NC}"
+        echo -e "  ${BULLET} Role        : ${LBLUE}FOREIGN${NC}"
         echo -e "  ${BULLET} Transport   : ${LYELLOW}${TRANSPORT^^}${NC}"
         echo -e "  ${BULLET} Iran IP     : ${WHITE}${local_ip}${NC}  port ${WHITE}${TUNNEL_PORT}${NC}"
         echo -e "  ${BULLET} Token       : ${WHITE}${TOKEN}${NC}"
         echo ""
-        echo -e "  ${DIM}On the Kharej server, run this script → Create Tunnel${NC}"
-        echo -e "  ${DIM}→ Role: KHAREJ | Transport: ${TRANSPORT^^} | Iran IP: ${local_ip}:${TUNNEL_PORT} | Token: ${TOKEN}${NC}"
+        echo -e "  ${DIM}On the Foreign server, run this script → Create Tunnel${NC}"
+        echo -e "  ${DIM}→ Role: FOREIGN | Transport: ${TRANSPORT^^} | Iran IP: ${local_ip}:${TUNNEL_PORT} | Token: ${TOKEN}${NC}"
     else
         echo -e "  ${BOLD}${LGREEN}[ OTHER SERVER — IRAN (run this script there) ]${NC}"
         echo -e "  ${BULLET} Role        : ${LGREEN}IRAN${NC}"
