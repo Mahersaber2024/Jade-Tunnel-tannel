@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  Version : 1.0.3
-#  Sponsor : @JadeTunnell_bot
+#  Sponsor : JadeTunnel
 #  Project : JadeTunnel
 #  Supports: TCP | TCPMUX | WSMUX | WSSMUX
 #  Roles   : Iran (Server) | foreign (Client)
